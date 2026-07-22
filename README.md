@@ -98,3 +98,12 @@ Agriculture is the foundation of civilization, but it has historically lagged in
 5. **📈 Carbon Credit Tracking:** Helping sustainable farmers quantify their regenerative practices to earn and sell carbon credits effortlessly.
 
 > *"We are planting the digital seeds today to harvest a more sustainable, profitable, and transparent agricultural sector tomorrow."* 🌾✨
+
+---
+
+<div align="center">
+  <a href="#">🌐 Website</a> &nbsp;&bull;&nbsp;
+  <a href="#">𝕏 Twitter</a> &nbsp;&bull;&nbsp;
+  <a href="#">💼 LinkedIn</a> &nbsp;&bull;&nbsp;
+  <a href="#">✉️ Contact Us</a>
+</div>
