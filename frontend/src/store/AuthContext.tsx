@@ -12,6 +12,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
+  verifyEmail: (email: string, otp: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -35,20 +36,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const storedToken = localStorage.getItem('agtech_token');
     const storedUser = localStorage.getItem('agtech_user');
-    if (storedToken && storedUser) {
+    if (storedToken && storedUser && storedToken !== 'undefined') {
       // eslint-disable-next-line
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Failed to parse user from localStorage', e);
+      }
     }
     // eslint-disable-next-line
     setIsLoading(false);
   }, []);
 
   const persistAuth = (data: AuthResponse) => {
-    localStorage.setItem('agtech_token', data.token);
-    localStorage.setItem('agtech_user', JSON.stringify(data.user));
-    setToken(data.token);
-    setUser(data.user);
+    const tokenToSave = data.token || (data as any).accessToken;
+    if (tokenToSave && tokenToSave !== 'undefined') {
+      localStorage.setItem('agtech_token', tokenToSave);
+      localStorage.setItem('agtech_user', JSON.stringify(data.user));
+      setToken(tokenToSave);
+      setUser(data.user);
+    }
   };
 
   const login = useCallback(async (email: string, password: string) => {
@@ -57,7 +65,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const register = useCallback(async (data: RegisterData) => {
-    const res = await api.post<AuthResponse>('/auth/register', data);
+    await api.post('/auth/register', data);
+  }, []);
+
+  const verifyEmail = useCallback(async (email: string, otp: string) => {
+    const res = await api.post<AuthResponse>('/auth/verify-email', { email, otp });
     persistAuth(res.data);
   }, []);
 
@@ -73,7 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     <AuthContext.Provider value={{
       user, token, isLoading,
       isAuthenticated: !!user && !!token,
-      login, register, logout,
+      login, register, verifyEmail, logout,
     }}>
       {children}
     </AuthContext.Provider>

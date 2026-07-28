@@ -27,8 +27,8 @@ export default function RegisterPage() {
         role: form.role,
         location: form.location
       });
-      toast.success('Account created successfully!');
-      router.push('/dashboard');
+      toast.success('Account created! Please verify your email.');
+      router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Registration failed. Try again.');

@@ -1,10 +1,9 @@
 /**
- * src/models/User.js — User schema with role-based access
+ * src/models/User.js — Unified User schema with role-based access & OTP verification
  * Roles: 'landowner' | 'tenant'
  */
 
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 
 const UserSchema = new mongoose.Schema(
   {
@@ -25,8 +24,6 @@ const UserSchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, 'Password is required'],
-      minlength: [6, 'Password must be at least 6 characters'],
-      select: false, // Never return password in queries by default
     },
     role: {
       type: String,
@@ -39,6 +36,7 @@ const UserSchema = new mongoose.Schema(
     },
     location: {
       type: String,
+      required: [true, 'Location is required'],
       trim: true,
     },
     avatar: {
@@ -49,21 +47,12 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    verified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
-
-// ─── Hash password before saving ─────────────────────────────────────────────
-UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  const salt = await bcrypt.genSalt(12);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
-
-// ─── Instance method: compare password ───────────────────────────────────────
-UserSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
-};
 
 module.exports = mongoose.model('User', UserSchema);

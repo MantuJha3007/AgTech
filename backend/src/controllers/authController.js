@@ -87,7 +87,6 @@ async function login(req, res) {
     }, config.JWT_SECRET,
         {
             expiresIn: "7d"
-
         }
     )
 
@@ -113,7 +112,7 @@ async function login(req, res) {
         httpOnly: true,
         secure: true,
         sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 100 // 7  days
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     })
 
     res.status(200).json({
@@ -125,6 +124,7 @@ async function login(req, res) {
             location: user.location,
         },
         accessToken,
+        token: accessToken,
     })
 }
 
@@ -282,13 +282,46 @@ async function verifyEmail(req,res){
         })
     }
 
-    const user = await userModel.findByIdAndUpdate(otpDoc.user,{
+    const user = await userModel.findByIdAndUpdate(otpDoc.user, {
         verified: true
-    })
+    }, { new: true });
 
     await otpModel.deleteMany({
         user: otpDoc.user
-    })
+    });
+
+    const refreshToken = jwt.sign({
+        id: user._id
+    }, config.JWT_SECRET,
+        {
+            expiresIn: "7d"
+        }
+    );
+
+    const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+
+    const session = await sessionModel.create({
+        user: user._id,
+        refreshTokenHash,
+        ip: req.ip || "127.0.0.1",
+        userAgent: req.headers["user-agent"] || "unknown"
+    });
+
+    const accessToken = jwt.sign({
+        id: user._id,
+        sessionId: session._id
+    }, config.JWT_SECRET,
+        {
+            expiresIn: "15m"
+        }
+    );
+
+    res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
 
     return res.status(200).json({
         message: "Email verified successfully",
@@ -298,7 +331,9 @@ async function verifyEmail(req,res){
             role: user.role,
             location: user.location,
             verified: user.verified
-        }
-    })
+        },
+        accessToken,
+        token: accessToken
+    });
 }
 module.exports = { register, login, getMe, refreshToken, logout, logoutAll, verifyEmail };
