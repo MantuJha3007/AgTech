@@ -6,15 +6,17 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/store/AuthContext';
 import { Leaf, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const router = useRouter();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +30,24 @@ export default function LoginPage() {
       toast.error(err?.response?.data?.message || 'Login failed. Check your credentials.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) {
+      toast.error('No credential received from Google.');
+      return;
+    }
+    setGoogleLoading(true);
+    try {
+      await googleLogin(credentialResponse.credential);
+      toast.success('Welcome back!');
+      router.push('/dashboard');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Google sign-in failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -107,7 +127,7 @@ export default function LoginPage() {
             </div>
             
             <div className="pt-2">
-              <button type="submit" disabled={loading} id="login-btn" className="premium-btn">
+              <button type="submit" disabled={loading || googleLoading} id="login-btn" className="premium-btn">
                 {loading ? (
                   <Loader2 size={18} className="animate-spin" />
                 ) : (
@@ -116,6 +136,40 @@ export default function LoginPage() {
               </button>
             </div>
           </form>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-gray-900/90 px-3 text-gray-400 font-semibold tracking-wider rounded-md">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          {/* Google Sign In */}
+          <div className="flex flex-col items-center justify-center w-full min-h-[44px]">
+            {googleLoading ? (
+              <div className="flex items-center justify-center py-2.5 text-sm text-gray-300">
+                <Loader2 size={18} className="animate-spin mr-2 text-emerald-400" />
+                Signing in with Google...
+              </div>
+            ) : (
+              <div className="w-full flex justify-center [&>div]:!w-full [&_iframe]:!w-full">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => toast.error('Google sign-in was unsuccessful')}
+                  theme="filled_black"
+                  shape="rectangular"
+                  size="large"
+                  text="signin_with"
+                  width="100%"
+                />
+              </div>
+            )}
+          </div>
 
           <div className="mt-8 pt-6 border-t border-white/5 text-center">
             <p className="text-sm text-gray-400">
@@ -136,7 +190,7 @@ export default function LoginPage() {
         >
           <div className="inline-block glass-panel px-4 py-2 rounded-full">
             <p className="text-xs text-gray-400">
-              <span className="text-emerald-400 font-medium">Demo:</span> Register first, then sign in with your email.
+              <span className="text-emerald-400 font-medium">Tip:</span> Sign in with Google or your email credentials.
             </p>
           </div>
         </motion.div>

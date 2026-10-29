@@ -17,6 +17,11 @@ authRouter.post("/register", authController.register);
 authRouter.post("/login", authController.login);
 
 /**
+ * POST /api/auth/google
+ */
+authRouter.post("/google", authController.googleLogin);
+
+/**
  * GET /api/auth/get-me
  */
 

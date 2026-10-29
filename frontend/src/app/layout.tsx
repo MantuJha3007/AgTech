@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/store/AuthContext';
+import GoogleAuthProvider from '@/components/providers/GoogleAuthProvider';
 import { Toaster } from 'react-hot-toast';
 import { Leaf, Mail, Globe } from 'lucide-react';
 
@@ -16,12 +17,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={inter.variable}>
       <body className="bg-gray-950 text-white antialiased">
-        <AuthProvider>
-          <div className="flex flex-col min-h-screen">
-            <main className="flex-1">
-              {children}
-            </main>
-            <footer className="border-t border-white/5 bg-gray-900/30 backdrop-blur-lg">
+        <GoogleAuthProvider>
+          <AuthProvider>
+            <div className="flex flex-col min-h-screen">
+              <main className="flex-1">
+                {children}
+              </main>
+              <footer className="border-t border-white/5 bg-gray-900/30 backdrop-blur-lg">
               <div className="max-w-7xl mx-auto px-6 py-8 md:py-10">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                   {/* Brand */}
@@ -76,7 +78,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
             }}
           />
-        </AuthProvider>
+          </AuthProvider>
+        </GoogleAuthProvider>
       </body>
     </html>
   );

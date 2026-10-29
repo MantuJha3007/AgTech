@@ -6,15 +6,35 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/store/AuthContext';
 import { Leaf, Eye, EyeOff, Loader2, User, Mail, MapPin, ArrowRight } from 'lucide-react';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const router = useRouter();
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'landowner' as 'landowner' | 'tenant', location: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) {
+      toast.error('No credential received from Google.');
+      return;
+    }
+    setGoogleLoading(true);
+    try {
+      await googleLogin(credentialResponse.credential, form.role);
+      toast.success('Welcome to AgTech!');
+      router.push('/dashboard');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Google sign-in failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,7 +184,7 @@ export default function RegisterPage() {
             </div>
             
             <div className="pt-4">
-              <button type="submit" disabled={loading} id="register-btn" className="premium-btn">
+              <button type="submit" disabled={loading || googleLoading} id="register-btn" className="premium-btn">
                 {loading ? (
                   <Loader2 size={18} className="animate-spin" />
                 ) : (
@@ -173,6 +193,40 @@ export default function RegisterPage() {
               </button>
             </div>
           </form>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-gray-900/90 px-3 text-gray-400 font-semibold tracking-wider rounded-md">
+                Or sign up with
+              </span>
+            </div>
+          </div>
+
+          {/* Google Sign Up */}
+          <div className="flex flex-col items-center justify-center w-full min-h-[44px]">
+            {googleLoading ? (
+              <div className="flex items-center justify-center py-2.5 text-sm text-gray-300">
+                <Loader2 size={18} className="animate-spin mr-2 text-emerald-400" />
+                Signing up with Google...
+              </div>
+            ) : (
+              <div className="w-full flex justify-center [&>div]:!w-full [&_iframe]:!w-full">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => toast.error('Google sign-up was unsuccessful')}
+                  theme="filled_black"
+                  shape="rectangular"
+                  size="large"
+                  text="signup_with"
+                  width="100%"
+                />
+              </div>
+            )}
+          </div>
 
           <div className="mt-8 pt-6 border-t border-white/5 text-center">
             <p className="text-sm text-gray-400">

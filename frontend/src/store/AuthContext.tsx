@@ -11,6 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  googleLogin: (credential: string, role?: 'landowner' | 'tenant') => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   verifyEmail: (email: string, otp: string) => Promise<void>;
   logout: () => void;
@@ -64,6 +65,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     persistAuth(res.data);
   }, []);
 
+  const googleLogin = useCallback(async (credential: string, role?: 'landowner' | 'tenant') => {
+    const res = await api.post<AuthResponse>('/auth/google', { credential, role });
+    persistAuth(res.data);
+  }, []);
+
   const register = useCallback(async (data: RegisterData) => {
     await api.post('/auth/register', data);
   }, []);
@@ -85,7 +91,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     <AuthContext.Provider value={{
       user, token, isLoading,
       isAuthenticated: !!user && !!token,
-      login, register, verifyEmail, logout,
+      login, googleLogin, register, verifyEmail, logout,
     }}>
       {children}
     </AuthContext.Provider>

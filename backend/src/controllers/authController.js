@@ -6,6 +6,8 @@ const config = require("../config/config.js");
 const { sendEmail } = require("../services/email.service.js");
 const { generateOtp, getOtpHtml } = require("../utils/utils.js");
 const otpModel = require("../models/otp.model.js");
+const { OAuth2Client } = require("google-auth-library");
+const googleClient = new OAuth2Client(config.GOOGLE_CLIENT_ID);
 
 
 async function register(req, res) {
@@ -336,4 +338,118 @@ async function verifyEmail(req,res){
         token: accessToken
     });
 }
-module.exports = { register, login, getMe, refreshToken, logout, logoutAll, verifyEmail };
+
+async function googleLogin(req, res) {
+    try {
+        const { credential, role } = req.body;
+
+        if (!credential) {
+            return res.status(400).json({
+                message: "Google credential is required"
+            });
+        }
+
+        let payload;
+        try {
+            const ticket = await googleClient.verifyIdToken({
+                idToken: credential,
+                audience: config.GOOGLE_CLIENT_ID
+            });
+            payload = ticket.getPayload();
+        } catch (verifyErr) {
+            console.error("Google token verification error:", verifyErr.message);
+            return res.status(401).json({
+                message: "Invalid Google credential"
+            });
+        }
+
+        if (!payload || !payload.email) {
+            return res.status(401).json({
+                message: "Unable to retrieve email from Google account"
+            });
+        }
+
+        let user = await userModel.findOne({ email: payload.email });
+
+        if (!user) {
+            user = await userModel.create({
+                name: payload.name || payload.email.split("@")[0],
+                email: payload.email,
+                role: role || "tenant",
+                location: "Not specified",
+                authProvider: "google",
+                googleId: payload.sub,
+                avatar: payload.picture || "",
+                verified: true
+            });
+        } else {
+            let updated = false;
+            if (!user.verified) {
+                user.verified = true;
+                updated = true;
+            }
+            if (!user.googleId) {
+                user.googleId = payload.sub;
+                updated = true;
+            }
+            if (!user.avatar && payload.picture) {
+                user.avatar = payload.picture;
+                updated = true;
+            }
+            if (updated) {
+                await user.save();
+            }
+        }
+
+        const refreshToken = jwt.sign({
+            id: user._id
+        }, config.JWT_SECRET, {
+            expiresIn: "7d"
+        });
+
+        const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+
+        const session = await sessionModel.create({
+            user: user._id,
+            refreshTokenHash,
+            ip: req.ip || "127.0.0.1",
+            userAgent: req.headers["user-agent"] || "unknown"
+        });
+
+        const accessToken = jwt.sign({
+            id: user._id,
+            sessionId: session._id
+        }, config.JWT_SECRET, {
+            expiresIn: "15m"
+        });
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        return res.status(200).json({
+            message: "Google login successful",
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                location: user.location,
+                avatar: user.avatar,
+                verified: user.verified
+            },
+            accessToken,
+            token: accessToken
+        });
+    } catch (error) {
+        console.error("googleLogin error:", error);
+        return res.status(500).json({
+            message: error.message || "Failed to authenticate with Google"
+        });
+    }
+}
+
+module.exports = { register, login, getMe, refreshToken, logout, logoutAll, verifyEmail, googleLogin };

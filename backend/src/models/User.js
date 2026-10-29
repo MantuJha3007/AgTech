@@ -23,7 +23,18 @@ const UserSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: function() {
+        return this.authProvider === 'local';
+      },
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
+    googleId: {
+      type: String,
+      default: null,
     },
     role: {
       type: String,
@@ -36,7 +47,7 @@ const UserSchema = new mongoose.Schema(
     },
     location: {
       type: String,
-      required: [true, 'Location is required'],
+      default: 'Not specified',
       trim: true,
     },
     avatar: {
